@@ -1,0 +1,25 @@
+# Ignora cartelle specifiche di Python
+upo-machine-learning/Machine Learning/Logistic Regression With Gradient Descend/__pycache__/
+*.pyc
+
+# Ignora file di configurazione locali
+.idea/
+*.log
+*.swp
+
+# Ignora ambienti virtuali Python
+**/venv/
+**/.venv/
+.env/
+**/env/
+**/virtualenv/
+*:Zone.Identifier
+
+# Ignora file
+*.pt
+
+# Ignora i plot e le run
+**/runs/
+Assets/Results/*
+Assets/Plot/*
+Assets/Dataset/*
