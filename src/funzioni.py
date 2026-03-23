@@ -214,7 +214,8 @@ def run_clustering(
         k_means_reduction: int = 10,
         optimal_k: int = -1,
         pre_clustering: bool = True,
-        compare_with_sklearn: bool = True) -> None:
+        compare_with_sklearn: bool = True,
+        dendrogram_display_branches: int = 10) -> None:
     """
     Esegue il clustering gerarchico e salva i risultati.
 
@@ -263,7 +264,12 @@ def run_clustering(
     # Evita un taglio non valido del dendrogramma quando optimal_k e automatico.
     dendrogram_k = optimal_k if not opt else max(2, min(max_clusters, len(linkage_matrix) + 1))
     # clusters: int = save_dendrogram(linkage_matrix, sub_plot_dir)
-    cut_distance: float = plot_dendrogram(linkage_matrix, sub_plot_dir, dendrogram_k)
+    cut_distance: float = plot_dendrogram(
+        linkage_matrix,
+        sub_plot_dir,
+        dendrogram_k,
+        max_display_branches=dendrogram_display_branches,
+    )
     print(f'Dendrogramma tagliato a {dendrogram_k} cluster (soglia={cut_distance:.4f})')
 
     if opt:

@@ -15,6 +15,7 @@ def single_run(
         dataset_name='Frogs_MFCCs',
         pre_clustering: bool = True,
         compare_with_sklearn: bool = True,
+        dendrogram_display_branches: int = 10,
 ):
     # Setup iniziale
     dataset_dir, output_dir, plot_dir = setup_directories(dataset_name)
@@ -35,7 +36,8 @@ def single_run(
                    k_means_reduction=k_means_reduction,
                    optimal_k=optimal_k,
                    pre_clustering=pre_clustering,
-                   compare_with_sklearn=compare_with_sklearn)
+                   compare_with_sklearn=compare_with_sklearn,
+                   dendrogram_display_branches=dendrogram_display_branches)
 
     print("Progetto completato e tutti i risultati salvati.")
 
@@ -50,6 +52,7 @@ def multi_run(
         dataset_name='iris_dataset',
         pre_clustering: bool = True,
         compare_with_sklearn: bool = True,
+        dendrogram_display_branches: int = 10,
     ):
     # Setup iniziale
     dataset_dir, output_dir, plot_dir = setup_directories(dataset_name)
@@ -85,6 +88,7 @@ def multi_run(
                                optimal_k=optimal_k,
                                pre_clustering=pre_clustering,
                                compare_with_sklearn=compare_with_sklearn,
+                               dendrogram_display_branches=dendrogram_display_branches,
                 )
 
     print("Progetto completato e tutti i risultati salvati.")
@@ -167,6 +171,12 @@ def parse_args():
         default=True,
         help="Abilita/disabilita il confronto con baseline scikit-learn.",
     )
+    parser.add_argument(
+        "--dendrogram-branches",
+        type=int,
+        default=10,
+        help="Numero massimo di rami mostrati nel dendrogramma (truncate_mode='lastp').",
+    )
 
     return parser.parse_args()
 
@@ -185,6 +195,7 @@ def main():
             dataset_name=args.dataset,
             pre_clustering=args.pre_clustering,
             compare_with_sklearn=args.compare_sklearn,
+            dendrogram_display_branches=args.dendrogram_branches,
         )
     else:
         multi_run(
@@ -196,6 +207,7 @@ def main():
             dataset_name=args.dataset,
             pre_clustering=args.pre_clustering,
             compare_with_sklearn=args.compare_sklearn,
+            dendrogram_display_branches=args.dendrogram_branches,
         )
 
 

@@ -3,6 +3,7 @@ from scipy.cluster.hierarchy import dendrogram
 import os
 import matplotlib.pyplot as plt
 from typing import Callable
+import pandas as pd
 # Determina il percorso della cartella "assets/plot"
 
 
@@ -129,7 +130,11 @@ def save_plot(plot, file_name: str, plot_dir: str):
     print(f"Plot salvato in {file_path}")
 
 
-def plot_dendrogram(linkage_matrix: np.ndarray, plot_dir: str, n_clusters: int):
+def plot_dendrogram(
+    linkage_matrix: np.ndarray,
+    plot_dir: str,
+    n_clusters: int,
+    max_display_branches: int = 10):
     """
     Crea e salva il dendrogramma con un numero specifico di cluster colorati.
 
@@ -137,6 +142,7 @@ def plot_dendrogram(linkage_matrix: np.ndarray, plot_dir: str, n_clusters: int):
         linkage_matrix (np.ndarray): Matrice di linkage per il dendrogramma.
         plot_dir (str): Directory di output per i plot.
         n_clusters (int): Numero desiderato di cluster da visualizzare.
+        max_display_branches (int): Numero massimo di rami terminali mostrati.
     """
     from scipy.cluster.hierarchy import dendrogram
     plt.figure(figsize=(10, 7))
@@ -145,16 +151,23 @@ def plot_dendrogram(linkage_matrix: np.ndarray, plot_dir: str, n_clusters: int):
     # Calcola la soglia di taglio per ottenere il numero desiderato di cluster
     threshold = linkage_matrix[-(n_clusters - 1), 2]
 
-    dendrogram(linkage_matrix, color_threshold=threshold)
+    max_display_branches = max(2, int(max_display_branches))
+    dendrogram(
+        linkage_matrix,
+        color_threshold=threshold,
+        truncate_mode='lastp',
+        p=max_display_branches,
+        show_leaf_counts=True,
+    )
 
-    plt.title(f"Dendrogram with {n_clusters} clusters")
+    plt.title(f"Dendrogram with {n_clusters} clusters (last {max_display_branches} branches)")
     plt.xlabel("Sample Index")
     plt.ylabel("Distance")
 
     # Aggiungi una linea orizzontale per indicare il taglio
     plt.axhline(y=float(threshold), color='r', linestyle='--')
 
-    save_plot(plt, f"dendrogram_{n_clusters}_clusters.png", plot_dir)
+    save_plot(plt, f"dendrogram_{n_clusters}_clusters_lastp{max_display_branches}.png", plot_dir)
 
     return threshold
 
@@ -213,3 +226,110 @@ def save_elbow_plot(X: np.ndarray, max_clusters: int, clustering_func: Callable,
     plt.ylabel("Silhouette Score")
     plt.title("Metodo del gomito usando Silhouette Score")
     save_plot(plt, "elbow_plot.png", plot_dir)
+
+
+def _load_comparison_row(comparison_csv_path: str) -> pd.Series:
+    df = pd.read_csv(comparison_csv_path)
+    if df.empty:
+        raise ValueError(f"Il file {comparison_csv_path} e vuoto")
+    return df.iloc[0]
+
+
+def plot_comparison_metrics_bar(comparison_csv_path: str, output_path: str | None = None) -> str:
+    """
+    Plotta un confronto a barre tra metriche custom e sklearn.
+
+    Args:
+        comparison_csv_path (str): Path al file comparison_with_sklearn.csv.
+        output_path (str | None): Path completo del file immagine di output.
+
+    Returns:
+        str: Path del file salvato.
+    """
+    row = _load_comparison_row(comparison_csv_path)
+    metrics = ['precision', 'recall', 'f1_score', 'rand_index']
+
+    custom_vals = [float(row[f'custom_{m}']) for m in metrics]
+    sklearn_vals = [float(row[f'sklearn_{m}']) for m in metrics]
+
+    x = np.arange(len(metrics))
+    width = 0.36
+
+    plt.figure(figsize=(10, 6))
+    plt.bar(x - width / 2, custom_vals, width, label='Custom', color='#5B8FF9')
+    plt.bar(x + width / 2, sklearn_vals, width, label='Scikit-learn', color='#5AD8A6')
+    plt.xticks(x, metrics)
+    plt.ylim(0, 1)
+    plt.ylabel('Score')
+    plt.title('Custom vs Scikit-learn: metriche principali')
+    plt.legend()
+    plt.tight_layout()
+
+    if output_path is None:
+        output_path = os.path.join(os.path.dirname(comparison_csv_path), 'comparison_metrics_bar.png')
+    plt.savefig(output_path)
+    plt.close()
+    print(f"Plot salvato in {output_path}")
+    return output_path
+
+
+def plot_comparison_deltas(comparison_csv_path: str, output_path: str | None = None) -> str:
+    """
+    Plotta la differenza (custom - sklearn) sulle metriche principali.
+
+    Args:
+        comparison_csv_path (str): Path al file comparison_with_sklearn.csv.
+        output_path (str | None): Path completo del file immagine di output.
+
+    Returns:
+        str: Path del file salvato.
+    """
+    row = _load_comparison_row(comparison_csv_path)
+    metrics = ['precision', 'recall', 'f1_score', 'rand_index']
+    deltas = [float(row[f'custom_{m}']) - float(row[f'sklearn_{m}']) for m in metrics]
+
+    plt.figure(figsize=(10, 6))
+    colors = ['#F6BD16' if d >= 0 else '#F08BB4' for d in deltas]
+    plt.bar(metrics, deltas, color=colors)
+    plt.axhline(0.0, color='black', linewidth=1)
+    plt.ylabel('Delta (custom - sklearn)')
+    plt.title('Delta metriche: custom vs scikit-learn')
+    plt.tight_layout()
+
+    if output_path is None:
+        output_path = os.path.join(os.path.dirname(comparison_csv_path), 'comparison_metrics_delta.png')
+    plt.savefig(output_path)
+    plt.close()
+    print(f"Plot salvato in {output_path}")
+    return output_path
+
+
+def plot_confusion_pair_deltas(comparison_csv_path: str, output_path: str | None = None) -> str:
+    """
+    Plotta le differenze (custom - sklearn) su TP, FP, TN, FN.
+
+    Args:
+        comparison_csv_path (str): Path al file comparison_with_sklearn.csv.
+        output_path (str | None): Path completo del file immagine di output.
+
+    Returns:
+        str: Path del file salvato.
+    """
+    row = _load_comparison_row(comparison_csv_path)
+    comps = ['tp', 'fp', 'tn', 'fn']
+    deltas = [int(row[f'custom_{c}']) - int(row[f'sklearn_{c}']) for c in comps]
+
+    plt.figure(figsize=(10, 6))
+    colors = ['#5B8FF9' if d >= 0 else '#F08BB4' for d in deltas]
+    plt.bar([c.upper() for c in comps], deltas, color=colors)
+    plt.axhline(0, color='black', linewidth=1)
+    plt.ylabel('Delta conteggi (custom - sklearn)')
+    plt.title('Differenze TP/FP/TN/FN: custom vs scikit-learn')
+    plt.tight_layout()
+
+    if output_path is None:
+        output_path = os.path.join(os.path.dirname(comparison_csv_path), 'comparison_pairs_delta.png')
+    plt.savefig(output_path)
+    plt.close()
+    print(f"Plot salvato in {output_path}")
+    return output_path
