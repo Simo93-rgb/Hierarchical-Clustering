@@ -1,4 +1,6 @@
-from funzioni import *
+import os
+
+from src.funzioni import load_and_preprocess_data, run_clustering, setup_directories
 
 
 def single_run(

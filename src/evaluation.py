@@ -309,7 +309,7 @@ def find_optimal_clusters(X: np.ndarray, max_clusters: int, clustering_func, plo
         labels = clustering_func(n_clusters)
         silhouette_avg, _ = calculate_silhouette(X, labels)
         silhouette_scores.append(silhouette_avg)
-        from plot import save_silhouette_plot
+        from .plot import save_silhouette_plot
         save_silhouette_plot(X, labels, n_clusters, plot_dir)
 
     silhouette_optimal = silhouette_scores.index(max(silhouette_scores)) + 2

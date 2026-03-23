@@ -1,12 +1,18 @@
+import os
 from typing import Tuple, Union, List
 
 import numpy as np
 import pandas as pd
 
-from data import DataHandler
-from evaluation import *
-from hierarchical_clustering import HierarchicalClustering
-from plot import save_silhouette_plot, plot_dendrogram
+from .data import DataHandler
+from .evaluation import (
+    evaluate_clustering,
+    find_optimal_clusters,
+    print_contingency_matrix,
+    save_evaluation_results,
+)
+from .hierarchical_clustering import HierarchicalClustering
+from .plot import save_silhouette_plot, plot_dendrogram
 
 
 def setup_directories(witch_dataset:str='Frogs_MFCCs') -> Tuple[str, str, str]:
@@ -16,13 +22,13 @@ def setup_directories(witch_dataset:str='Frogs_MFCCs') -> Tuple[str, str, str]:
     Returns:
         Tuple[str, str, str]: Percorsi per dataset, risultati e plot.
     """
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    dataset_dir = os.path.join(current_dir, 'Assets', 'Dataset')
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    dataset_dir = os.path.join(project_root, 'Assets', 'Dataset')
 
-    output_dir = os.path.join(current_dir, 'Assets', witch_dataset)
+    output_dir = os.path.join(project_root, 'Assets', witch_dataset)
     output_dir = os.path.join(output_dir, 'Results')
 
-    plot_dir = os.path.join(current_dir, 'Assets', witch_dataset)
+    plot_dir = os.path.join(project_root, 'Assets', witch_dataset)
     plot_dir = os.path.join(plot_dir, 'Plot')
 
     os.makedirs(output_dir, exist_ok=True)

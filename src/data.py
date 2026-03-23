@@ -86,8 +86,8 @@ class DataHandler:
 
 if __name__ == '__main__':
     # Determina il percorso della cartella "Assets/plot"
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    dataset_dir = os.path.join(current_dir, 'Assets', 'Dataset')
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    dataset_dir = os.path.join(project_root, 'Assets', 'Dataset')
 
     # Inizializza il gestore dati e carica il dataset
     data_handler = DataHandler(f'{dataset_dir}/Frogs_MFCCs_reduced.csv')
