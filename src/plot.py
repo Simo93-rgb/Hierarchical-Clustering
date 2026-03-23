@@ -2,8 +2,10 @@ import numpy as np
 from scipy.cluster.hierarchy import dendrogram
 import os
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 from typing import Callable
 import pandas as pd
+from sklearn.decomposition import PCA
 # Determina il percorso della cartella "assets/plot"
 
 
@@ -226,6 +228,110 @@ def save_elbow_plot(X: np.ndarray, max_clusters: int, clustering_func: Callable,
     plt.ylabel("Silhouette Score")
     plt.title("Metodo del gomito usando Silhouette Score")
     save_plot(plt, "elbow_plot.png", plot_dir)
+
+
+def _canonical_cluster_labels(labels: np.ndarray) -> tuple[np.ndarray, np.ndarray, dict]:
+    """
+    Converte etichette cluster arbitrarie (es. 12/13/14) in etichette canoniche C1..Ck.
+    Restituisce anche il mapping utile per titoli/legende leggibili.
+    """
+    raw_unique = np.array(sorted(np.unique(labels)))
+    raw_to_code = {raw: idx for idx, raw in enumerate(raw_unique)}
+    codes = np.array([raw_to_code[x] for x in labels], dtype=int)
+    canonical_names = np.array([f"C{idx + 1}" for idx in range(len(raw_unique))])
+    mapping = {f"C{idx + 1}": str(raw) for idx, raw in enumerate(raw_unique)}
+    return codes, canonical_names, mapping
+
+
+def plot_cluster_projection_pca(
+        X: np.ndarray,
+        labels: np.ndarray,
+        plot_dir: str,
+        title: str = "Cluster projection (PCA 2D)") -> str:
+    """
+    Proietta i dati su 2 componenti PCA e colora i punti per cluster predetto.
+    """
+    projected = PCA(n_components=2, random_state=42).fit_transform(X)
+
+    label_codes, canonical_names, mapping = _canonical_cluster_labels(labels)
+    n_clusters = len(canonical_names)
+    cmap = plt.cm.get_cmap('tab10', max(3, n_clusters))
+
+    plt.figure(figsize=(9, 7))
+    plt.scatter(
+        projected[:, 0],
+        projected[:, 1],
+        c=label_codes,
+        cmap=cmap,
+        s=30,
+        alpha=0.95,
+        edgecolors='white',
+        linewidths=0.35,
+    )
+    plt.title(title)
+    plt.xlabel('PCA 1')
+    plt.ylabel('PCA 2')
+
+    legend_handles = []
+    for idx, cname in enumerate(canonical_names):
+        legend_handles.append(
+            Line2D(
+                [0], [0],
+                marker='o',
+                color='w',
+                markerfacecolor=cmap(idx),
+                markeredgecolor='black',
+                markersize=7,
+                linewidth=0,
+                label=f"{cname} (raw {mapping[cname]})",
+            )
+        )
+    plt.legend(handles=legend_handles, title='Cluster', loc='best', fontsize=9, framealpha=0.95)
+    plt.tight_layout()
+
+    output_path = os.path.join(plot_dir, 'cluster_projection_pca.png')
+    plt.savefig(output_path)
+    plt.close()
+    print(f"Plot salvato in {output_path}")
+    return output_path
+
+
+def plot_contingency_heatmap(
+        y_true: np.ndarray,
+        y_pred: np.ndarray,
+        plot_dir: str,
+        title: str = 'Contingency heatmap (true class vs predicted cluster)') -> str:
+    """
+    Mostra una heatmap della matrice di contingenza classi vere vs cluster predetti.
+    """
+    pred_codes, canonical_names, mapping = _canonical_cluster_labels(y_pred)
+    contingency = pd.crosstab(
+        pd.Series(y_true, name='True class'),
+        pd.Series(pred_codes, name='Pred cluster code'),
+    )
+
+    contingency = contingency.reindex(columns=range(len(canonical_names)), fill_value=0)
+    display_columns = [f"{c} (raw {mapping[c]})" for c in canonical_names]
+
+    plt.figure(figsize=(10, 6))
+    im = plt.imshow(contingency.values, aspect='auto', cmap='YlGnBu')
+    plt.colorbar(im, fraction=0.046, pad=0.04)
+    plt.title(title)
+    plt.xlabel('Predicted cluster')
+    plt.ylabel('True class')
+    plt.xticks(range(contingency.shape[1]), display_columns, rotation=30, ha='right')
+    plt.yticks(range(contingency.shape[0]), contingency.index.astype(str))
+
+    for i in range(contingency.shape[0]):
+        for j in range(contingency.shape[1]):
+            plt.text(j, i, str(int(contingency.iat[i, j])), ha='center', va='center', fontsize=7)
+
+    plt.tight_layout()
+    output_path = os.path.join(plot_dir, 'contingency_heatmap.png')
+    plt.savefig(output_path)
+    plt.close()
+    print(f"Plot salvato in {output_path}")
+    return output_path
 
 
 def _load_comparison_row(comparison_csv_path: str) -> pd.Series:

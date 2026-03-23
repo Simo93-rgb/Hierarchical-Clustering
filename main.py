@@ -48,6 +48,7 @@ def single_run(
         pre_clustering: bool = True,
         compare_with_sklearn: bool = True,
         dendrogram_display_branches: int = 10,
+        plot_cluster_views: bool = False,
 ):
     # Setup iniziale
     dataset_dir, output_dir, plot_dir = setup_directories(dataset_name)
@@ -71,7 +72,8 @@ def single_run(
                    optimal_k=optimal_k,
                    pre_clustering=pre_clustering,
                    compare_with_sklearn=compare_with_sklearn,
-                   dendrogram_display_branches=dendrogram_display_branches)
+                   dendrogram_display_branches=dendrogram_display_branches,
+                   plot_cluster_views=plot_cluster_views)
 
     print("Progetto completato e tutti i risultati salvati.")
 
@@ -88,6 +90,7 @@ def multi_run(
         pre_clustering: bool = True,
         compare_with_sklearn: bool = True,
         dendrogram_display_branches: int = 10,
+        plot_cluster_views: bool = False,
     ):
     # Setup iniziale
     dataset_dir, output_dir, plot_dir = setup_directories(dataset_name)
@@ -122,6 +125,7 @@ def multi_run(
                                pre_clustering=pre_clustering,
                                compare_with_sklearn=compare_with_sklearn,
                                dendrogram_display_branches=dendrogram_display_branches,
+                               plot_cluster_views=plot_cluster_views,
                 )
 
     print("Progetto completato e tutti i risultati salvati.")
@@ -216,6 +220,12 @@ def parse_args():
         default=10,
         help="Numero massimo di rami mostrati nel dendrogramma (truncate_mode='lastp').",
     )
+    parser.add_argument(
+        "--plot-cluster-views",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Se attivo genera sia PCA 2D sia heatmap contingenza per ogni run.",
+    )
 
     return parser.parse_args()
 
@@ -235,6 +245,7 @@ def main():
             pre_clustering=args.pre_clustering,
             compare_with_sklearn=args.compare_sklearn,
             dendrogram_display_branches=args.dendrogram_branches,
+            plot_cluster_views=args.plot_cluster_views,
         )
     else:
         multi_run(
@@ -248,6 +259,7 @@ def main():
             pre_clustering=args.pre_clustering,
             compare_with_sklearn=args.compare_sklearn,
             dendrogram_display_branches=args.dendrogram_branches,
+            plot_cluster_views=args.plot_cluster_views,
         )
 
 
