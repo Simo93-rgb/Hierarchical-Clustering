@@ -1,4 +1,5 @@
 import os
+import time
 from typing import Tuple, Union, List
 
 import numpy as np
@@ -13,6 +14,75 @@ from .evaluation import (
 )
 from .hierarchical_clustering import HierarchicalClustering
 from .plot import save_silhouette_plot, plot_dendrogram
+
+
+def _fit_agglomerative_labels(
+        X_data: np.ndarray,
+        linkage_method: str,
+        distance: str,
+        optimal_k: int,
+) -> np.ndarray:
+    from sklearn.cluster import AgglomerativeClustering
+
+    kwargs = {
+        'n_clusters': optimal_k,
+        'linkage': linkage_method,
+    }
+    if linkage_method == 'ward':
+        kwargs['metric'] = 'euclidean'
+    else:
+        kwargs['metric'] = distance
+
+    try:
+        model = AgglomerativeClustering(**kwargs)
+    except TypeError:
+        # Compatibilita con versioni sklearn che usano ancora "affinity".
+        affinity = kwargs.pop('metric')
+        kwargs['affinity'] = affinity
+        model = AgglomerativeClustering(**kwargs)
+
+    return model.fit_predict(X_data)
+
+
+def _sklearn_baseline_labels(
+        X: np.ndarray,
+        linkage_method: str,
+        distance: str,
+        optimal_k: int,
+        pre_clustering: bool,
+        k_means_reduction: int,
+) -> Tuple[np.ndarray, str]:
+    from sklearn.cluster import KMeans
+
+    if pre_clustering:
+        reduced_X, kmeans_labels = kmeans_pre_clustering(X, max_clusters=k_means_reduction)
+
+        if linkage_method in {'single', 'complete', 'average', 'ward'} and (linkage_method != 'ward' or distance == 'euclidean'):
+            reduced_labels = _fit_agglomerative_labels(
+                X_data=reduced_X,
+                linkage_method=linkage_method,
+                distance=distance,
+                optimal_k=optimal_k,
+            )
+            mapped_labels = reduced_labels[kmeans_labels]
+            return mapped_labels, 'AgglomerativeClustering_on_kmeans_centroids'
+
+        # Fallback strutturale per linkage non disponibile in sklearn (es. centroid).
+        reduced_labels = KMeans(n_clusters=optimal_k, random_state=42, init='k-means++').fit_predict(reduced_X)
+        mapped_labels = reduced_labels[kmeans_labels]
+        return mapped_labels, 'KMeans_fallback_on_kmeans_centroids'
+
+    if linkage_method in {'single', 'complete', 'average', 'ward'} and (linkage_method != 'ward' or distance == 'euclidean'):
+        labels = _fit_agglomerative_labels(
+            X_data=X,
+            linkage_method=linkage_method,
+            distance=distance,
+            optimal_k=optimal_k,
+        )
+        return labels, 'AgglomerativeClustering'
+
+    labels = KMeans(n_clusters=optimal_k, random_state=42, init='k-means++').fit_predict(X)
+    return labels, 'KMeans_fallback'
 
 
 def setup_directories(dataset_name: str = 'Frogs_MFCCs') -> Tuple[str, str, str]:
@@ -127,7 +197,7 @@ def create_linkage_matrix(hc: HierarchicalClustering) -> np.ndarray:
             name_to_idx[a.name],
             name_to_idx[b.name],
             dist,
-            len(a.dataset_indices) + len(b.dataset_indices)
+            len(a.indices) + len(b.indices)
         ])
 
     return np.array(linkage_matrix)
@@ -143,7 +213,8 @@ def run_clustering(
         max_clusters: int = 8,
         k_means_reduction: int = 10,
         optimal_k: int = -1,
-        pre_clustering:bool=True) -> None:
+        pre_clustering: bool = True,
+        compare_with_sklearn: bool = True) -> None:
     """
     Esegue il clustering gerarchico e salva i risultati.
 
@@ -182,7 +253,7 @@ def run_clustering(
 
     print(f'Inizio fit per {linkage_method} linkage e distanza {distance}')
     hc.fit()
-    hc.save_cluster_history_to_json(filename="history_for_dendrogram.json")
+    # hc.save_cluster_history_to_json(filename="history_for_dendrogram.json")
     print('Fine fit')
     # Creazione del dendrogramma
     linkage_matrix = create_linkage_matrix(hc)
@@ -213,6 +284,33 @@ def run_clustering(
     evaluation_results['clusters'] = optimal_k
     evaluation_results['k_means_reduction'] = k_means_reduction
     save_evaluation_results(evaluation_results, "evaluation_results.csv", sub_output_dir)
+
+    if compare_with_sklearn:
+        sklearn_start = time.time()
+        sklearn_labels, sklearn_model_name = _sklearn_baseline_labels(
+            X=X,
+            linkage_method=linkage_method,
+            distance=distance,
+            optimal_k=optimal_k,
+            pre_clustering=pre_clustering,
+            k_means_reduction=k_means_reduction,
+        )
+        sklearn_elapsed = time.time() - sklearn_start
+
+        sklearn_eval = evaluate_clustering(y_true=y, y_pred=sklearn_labels)
+        comparison_results = {
+            'dataset_size': len(y),
+            'linkage_method': linkage_method,
+            'distance': distance,
+            'clusters': optimal_k,
+            'k_means_reduction': k_means_reduction,
+            'pre_clustering': pre_clustering,
+            'sklearn_model': sklearn_model_name,
+            'sklearn_elapsed_seconds': sklearn_elapsed,
+        }
+        comparison_results.update({f'custom_{k}': v for k, v in evaluation_results.items()})
+        comparison_results.update({f'sklearn_{k}': v for k, v in sklearn_eval.items()})
+        save_evaluation_results(comparison_results, "comparison_with_sklearn.csv", sub_output_dir)
     if not opt:
         # Salvataggio del plot della silhouette
         save_silhouette_plot(X, labels, dendrogram_k, sub_plot_dir)

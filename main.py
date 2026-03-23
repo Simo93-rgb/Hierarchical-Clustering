@@ -13,7 +13,8 @@ def single_run(
         categorical=None,
         soglia: float = 1.01,
         dataset_name='Frogs_MFCCs',
-        pre_clustering: bool = True
+        pre_clustering: bool = True,
+        compare_with_sklearn: bool = True,
 ):
     # Setup iniziale
     dataset_dir, output_dir, plot_dir = setup_directories(dataset_name)
@@ -33,20 +34,23 @@ def single_run(
                    max_clusters=max_clusters,
                    k_means_reduction=k_means_reduction,
                    optimal_k=optimal_k,
-                   pre_clustering=pre_clustering)
+                   pre_clustering=pre_clustering,
+                   compare_with_sklearn=compare_with_sklearn)
 
     print("Progetto completato e tutti i risultati salvati.")
 
 
 def multi_run(
-    max_clusters: int = 8,
-    k_min: int = 5,
-    k_max: int = 45,
+        max_clusters: int = 8,
+        k_min: int = 5,
+        k_max: int = 45,
         optimal_k=-1,
         categorical=None,
         soglia: float = 1.01,
         dataset_name='iris_dataset',
-        pre_clustering: bool = True):
+        pre_clustering: bool = True,
+        compare_with_sklearn: bool = True,
+    ):
     # Setup iniziale
     dataset_dir, output_dir, plot_dir = setup_directories(dataset_name)
     if dataset_name == 'Frogs_MFCCs':
@@ -80,6 +84,7 @@ def multi_run(
                                k_means_reduction=k,
                                optimal_k=optimal_k,
                                pre_clustering=pre_clustering,
+                               compare_with_sklearn=compare_with_sklearn,
                 )
 
     print("Progetto completato e tutti i risultati salvati.")
@@ -156,6 +161,12 @@ def parse_args():
         default=45,
         help="Valore finale (escluso) per la scansione k in modalita multi.",
     )
+    parser.add_argument(
+        "--compare-sklearn",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Abilita/disabilita il confronto con baseline scikit-learn.",
+    )
 
     return parser.parse_args()
 
@@ -173,6 +184,7 @@ def main():
             soglia=args.soglia,
             dataset_name=args.dataset,
             pre_clustering=args.pre_clustering,
+            compare_with_sklearn=args.compare_sklearn,
         )
     else:
         multi_run(
@@ -183,6 +195,7 @@ def main():
             soglia=args.soglia,
             dataset_name=args.dataset,
             pre_clustering=args.pre_clustering,
+            compare_with_sklearn=args.compare_sklearn,
         )
 
 
