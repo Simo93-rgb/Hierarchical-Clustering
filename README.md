@@ -73,6 +73,22 @@ Di seguito le varianti usate nelle analisi:
       - dendrogrammi;
       - silhouette plot.
 
+Rappresentazione della pipeline:
+
+```mermaid
+flowchart TD
+  A[Dataset grezzo] --> B[Preprocessing e normalizzazione]
+  B --> C[Pre-clustering K-Means]
+  C --> D[Centroidi micro-cluster]
+  D --> E[Clustering agglomerativo custom]
+  E --> F[Taglio dendrogramma / scelta k ottimale]
+  F --> G[Etichette finali]
+  G --> H[Metriche pairwise + matrice di contingenza]
+  G --> I[Plot: dendrogramma, silhouette, PCA, heatmap]
+  H --> L[CSV risultati]
+  I --> M[Cartella Plot]
+```
+
 ## 4\. Scelta dei Parametri in Ambito Non Supervisionato
 
 In assenza di una *ground truth* nota (es. un dataset sul vino senza classi), la giustificazione dei parametri dell'algoritmo non può basarsi su metriche esterne come Precision o Recall, ma deve affidarsi alla struttura intrinseca dei dati e a metriche di validazione interna.
@@ -90,7 +106,38 @@ Quando non si conoscono le famiglie o le classi in anticipo, il numero di cluste
 
   * **Analisi visiva del Dendrogramma:** È il pregio maggiore del clustering gerarchico. Osservando il dendrogramma, si cerca il "salto" verticale più lungo (la maggiore distanza sull'asse Y) che non viene intersecato da unioni orizzontali. Quel salto indica una forte e naturale distanza tra gruppi di dati. Tracciando una linea di taglio orizzontale in quel punto, l'albero restituisce il numero intrinseco di cluster. \* **Massimizzazione del Silhouette Score:** Si calcola il Coefficiente di Silhouette medio dell'intero modello al variare dei possibili tagli (es. tagliando l'albero per avere da 2 a 10 cluster). Si giustifica la scelta finale eleggendo il numero di cluster che massimizza lo score medio (più vicino a +1) e che presenta sagome omogenee e senza picchi negativi evidenti nel plot. \* **Metodo del Gomito (Elbow Method):** Tracciando la devianza o inerzia intra-cluster (WCSS) al variare dei cluster, si seleziona il punto in cui la curva subisce una brusca frenata nella sua discesa, formando un "gomito". Quel punto rappresenta il compromesso ideale tra un numero ridotto di cluster e un'alta coesione interna.
 
-## 5\. Struttura del progetto
+  ## 5\. Matrice di Confusione: Contingenza vs Pairwise
+
+  Nel progetto convivono due viste diverse:
+
+  1. **Matrice di contingenza (multiclasse)**
+    - classi reali sulle righe e cluster predetti sulle colonne
+    - utile per capire "quale classe finisce in quale cluster"
+    - con Iris e 3 classi avremo una matrice 3xK, con Frogs e 4 classi una 4xK
+
+  2. **Valutazione pairwise (2x2 virtuale)**
+    - TP/FP/TN/FN vengono calcolati sulle coppie di campioni
+    - questa e la base delle metriche pairwise (incluso il Rand Index)
+    - formula usata: $RI = \frac{TP + TN}{TP + FP + FN + TN}$
+
+  Quindi i valori TP/FP/TN/FN nei CSV non sono in conflitto con il fatto di avere 3 o 4 classi: sono il risultato della valutazione sulle coppie, non una confusion matrix multiclasse classica.
+
+  ## 6\. Visualizzazione Qualitativa dei Cluster
+
+  Poiche i dataset sono ad alta dimensionalita, non e possibile plottare direttamente lo spazio originale. La pipeline include due visualizzazioni leggere:
+
+  1. **Proiezione PCA 2D dei campioni colorati per cluster predetto**
+  2. **Heatmap di contingenza (classe vera vs cluster predetto)**
+
+  Questi plot si attivano da CLI con:
+
+  ```bash
+  --plot-cluster-views
+  ```
+
+  Se attivo, vengono salvati entrambi i plot per ogni run; se disattivo, non vengono generati.
+
+## 7\. Struttura del progetto
 
   - `main.py`: entrypoint CLI con argparse.
   - `src/funzioni.py`: orchestrazione della pipeline e utility operative.
@@ -102,7 +149,7 @@ Quando non si conoscono le famiglie o le classi in anticipo, il numero di cluste
   - `assets/<dataset>/Results/`: risultati numerici.
   - `assets/<dataset>/Plot/`: grafici.
 
-## 6\. Esecuzione
+## 8\. Esecuzione
 
 Setup ambiente:
 
@@ -124,15 +171,54 @@ Esempio run singola:
 uv run main.py --mode single --dataset Frogs_MFCCs --linkage average --distance euclidean --kmeans-reduction 25 --optimal-k -1
 ```
 
+Esempio run singola con plot qualitativi:
+
+```bash
+uv run main.py --mode single --dataset iris_dataset --linkage average --distance euclidean --kmeans-reduction auto --optimal-k 3 --plot-cluster-views
+```
+
 Esempio run multipla:
 
 ```bash
 uv run main.py --mode multi --dataset iris_dataset --k-min 5 --k-max 20 --max-clusters 8
 ```
 
-## 7\. Risultati e discussione
+## 9\. Risultati e discussione
 
 I risultati vengono salvati nelle sottocartelle del dataset selezionato, separando metriche e grafici per configurazione.
+
+### 9.1 Esempio visuale (Iris, average-euclidean, k\_means\_reduction=9)
+
+Configurazione di esempio:
+
+- dataset: `iris_dataset`
+- linkage: `average`
+- distanza: `euclidean`
+- `k_means_reduction=9` (risolto automaticamente)
+- cluster finali: `3`
+
+#### Dendrogramma troncato
+
+<div align="center">
+  <img src="assets/iris_dataset/Plot/k_means_reduction=9/average_euclidean/dendrogram_3_clusters_lastp10.png" alt="Dendrogramma Iris average euclidean" width="70%">
+</div>
+
+#### Vista qualitativa dei cluster
+
+<div align="center" style="margin-top: 10px; margin-bottom: 10px;">
+  <img src="assets/iris_dataset/Plot/k_means_reduction=9/average_euclidean/cluster_projection_pca.png" alt="PCA projection Iris" width="48%" style="display: inline-block; vertical-align: middle; margin: 5px;">
+  <img src="assets/iris_dataset/Plot/k_means_reduction=9/average_euclidean/contingency_heatmap.png" alt="Contingency heatmap Iris" width="48%" style="display: inline-block; vertical-align: middle; margin: 5px;">
+</div>
+
+#### Confronto custom vs scikit-learn
+
+<div align="center" style="margin-top: 10px; margin-bottom: 10px;">
+  <img src="assets/iris_dataset/Results/k_means_reduction=9/average_euclidean/comparison_metrics_bar.png" alt="Confronto metriche custom vs sklearn" width="31%" style="display: inline-block; vertical-align: middle; margin: 5px;">
+</div>
+
+<div align="center">
+  <img src="assets/iris_dataset/Results/k_means_reduction=9/average_euclidean/comparison_confusion_matrices.png" alt="Pairwise confusion matrices custom vs sklearn" width="70%">
+</div>
 
 La lettura consigliata è:
 
