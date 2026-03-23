@@ -8,7 +8,6 @@ import pandas as pd
 from .data import DataHandler
 from .evaluation import (
     evaluate_clustering,
-    find_optimal_clusters,
     print_contingency_matrix,
     save_evaluation_results,
 )
@@ -217,7 +216,7 @@ def run_clustering(
         plot_dir: str,
         max_clusters: int = 8,
         k_means_reduction: int = 10,
-        optimal_k: int = -1,
+        optimal_k: int = 4,
         pre_clustering: bool = True,
         compare_with_sklearn: bool = True,
         dendrogram_display_branches: int = 10,
@@ -265,11 +264,11 @@ def run_clustering(
     # Creazione del dendrogramma
     linkage_matrix = create_linkage_matrix(hc)
 
-    # Trova il numero ottimale di cluster
-    opt = optimal_k < 1
-    # Evita un taglio non valido del dendrogramma quando optimal_k e automatico.
-    dendrogram_k = optimal_k if not opt else max(2, min(max_clusters, len(linkage_matrix) + 1))
-    # clusters: int = save_dendrogram(linkage_matrix, sub_plot_dir)
+    if int(optimal_k) < 2:
+        raise ValueError("optimal_k deve essere >= 2. Per Frogs usare 4.")
+
+    dendrogram_k = max(2, min(int(optimal_k), len(linkage_matrix) + 1))
+
     cut_distance: float = plot_dendrogram(
         linkage_matrix,
         sub_plot_dir,
@@ -278,11 +277,10 @@ def run_clustering(
     )
     print(f'Dendrogramma tagliato a {dendrogram_k} cluster (soglia={cut_distance:.4f})')
 
-    if opt:
-        max_clusters = max(max_clusters, dendrogram_k)
-        optimal_k = find_optimal_clusters(X, max_clusters, hc.predict, sub_plot_dir, linkage_method, distance)
-
-    print(f"Numero ottimale di cluster: {optimal_k}")
+    if dendrogram_k != int(optimal_k):
+        print(f"optimal_k={optimal_k} ridotto a {dendrogram_k} per taglio valido del dendrogramma")
+    optimal_k = dendrogram_k
+    print(f"Numero di cluster finale impostato: {optimal_k}")
     # Creazione del grafico del gomito
     # save_elbow_plot(X, max_clusters, hc.predict, sub_plot_dir)
     # Previsione e valutazione
@@ -326,6 +324,8 @@ def run_clustering(
         sklearn_eval = evaluate_clustering(y_true=y, y_pred=sklearn_labels)
         comparison_results = {
             'dataset_size': len(y),
+            'true_classes_count': int(len(np.unique(y))),
+            'true_classes': '|'.join([str(c) for c in sorted(np.unique(y))]),
             'linkage_method': linkage_method,
             'distance': distance,
             'clusters': optimal_k,
@@ -337,9 +337,8 @@ def run_clustering(
         comparison_results.update({f'custom_{k}': v for k, v in evaluation_results.items()})
         comparison_results.update({f'sklearn_{k}': v for k, v in sklearn_eval.items()})
         save_evaluation_results(comparison_results, "comparison_with_sklearn.csv", sub_output_dir)
-    if not opt:
-        # Salvataggio del plot della silhouette
-        save_silhouette_plot(X, labels, dendrogram_k, sub_plot_dir)
+    # Salva solo la silhouette finale della configurazione scelta.
+    if len(np.unique(labels)) > 1:
         save_silhouette_plot(X, labels, optimal_k, sub_plot_dir)
 
     print(f"Risultati per {linkage_method} linkage e distanza {distance} salvati.")

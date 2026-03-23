@@ -41,7 +41,7 @@ def single_run(
         distance_metric: str,
         max_clusters: int = 8,
         k_means_reduction: str = '15',
-        optimal_k=-1,
+        optimal_k=4,
         categorical=None,
         soglia: float = 1.01,
         dataset_name='Frogs_MFCCs',
@@ -80,10 +80,10 @@ def single_run(
 
 def multi_run(
         max_clusters: int = 8,
-    k_min: str = '5',
-    k_max: str = '45',
-    auto_window: int = 2,
-        optimal_k=-1,
+        k_min: str = '5',
+        k_max: str = '45',
+        auto_window: int = 2,
+        optimal_k=4,
         categorical=None,
         soglia: float = 1.01,
         dataset_name='iris_dataset',
@@ -145,7 +145,7 @@ def parse_args():
     )
     parser.add_argument(
         "--dataset",
-        choices=["Frogs_MFCCs", "winequality-red", "winequality-white", "iris_dataset", "hepatitis"],
+        choices=["Frogs_MFCCs", "winequality-red", "winequality-white", "iris_dataset"],
         default="Frogs_MFCCs",
         help="Dataset da utilizzare.",
     )
@@ -164,7 +164,7 @@ def parse_args():
         "--max-clusters",
         type=int,
         default=8,
-        help="Numero massimo di cluster candidati quando optimal_k non e fissato.",
+        help="Parametro mantenuto per compatibilita; il taglio finale e controllato da --optimal-k.",
     )
     parser.add_argument(
         "--kmeans-reduction",
@@ -175,8 +175,8 @@ def parse_args():
     parser.add_argument(
         "--optimal-k",
         type=int,
-        default=-1,
-        help="Numero di cluster finale fisso. Usa -1 per selezione automatica.",
+        default=4,
+        help="Numero di cluster finale fisso (default: 4).",
     )
     parser.add_argument(
         "--pre-clustering",

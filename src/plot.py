@@ -341,6 +341,13 @@ def _load_comparison_row(comparison_csv_path: str) -> pd.Series:
     return df.iloc[0]
 
 
+def _parse_true_classes_from_row(row: pd.Series) -> list[str]:
+    raw = row.get('true_classes', '')
+    if not isinstance(raw, str) or not raw:
+        return []
+    return [x.strip() for x in raw.split('|') if x.strip()]
+
+
 def plot_comparison_metrics_bar(comparison_csv_path: str, output_path: str | None = None) -> str:
     """
     Plotta un confronto a barre tra metriche custom e sklearn.
@@ -447,11 +454,12 @@ def plot_confusion_matrices_custom_vs_sklearn(comparison_csv_path: str, output_p
     - Clustering Ibrido (custom)
     - Scikit-learn (baseline)
 
-    La matrice e nel formato:
+    La matrice e nel formato pairwise:
     [[TP, FP],
      [FN, TN]]
     """
     row = _load_comparison_row(comparison_csv_path)
+    true_classes = _parse_true_classes_from_row(row)
 
     custom_matrix = np.array([
         [int(row['custom_tp']), int(row['custom_fp'])],
@@ -471,15 +479,19 @@ def plot_confusion_matrices_custom_vs_sklearn(comparison_csv_path: str, output_p
 
     for ax, matrix, title in zip(axes, matrices, titles):
         im = ax.imshow(matrix, cmap='Blues')
-        ax.set_xticks([0, 1], labels=['Pred Pos', 'Pred Neg'])
-        ax.set_yticks([0, 1], labels=['True Pos', 'True Neg'])
+        ax.set_xticks([0, 1], labels=['Stesso cluster', 'Cluster diverso'])
+        ax.set_yticks([0, 1], labels=['Stessa classe', 'Classe diversa'])
         ax.set_title(title)
         for i in range(2):
             for j in range(2):
                 ax.text(j, i, str(matrix[i, j]), ha='center', va='center', color='black')
         fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
-    plt.suptitle('Confronto matrici di confusione (pair-count)')
+    if true_classes:
+        class_info = ', '.join(true_classes)
+        plt.suptitle(f'Confronto matrici pairwise | Classi reali: {class_info}')
+    else:
+        plt.suptitle('Confronto matrici pairwise')
     plt.tight_layout()
 
     if output_path is None:
