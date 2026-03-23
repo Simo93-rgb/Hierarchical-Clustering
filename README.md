@@ -67,7 +67,7 @@ Di seguito le varianti usate nelle analisi:
 1.  Caricamento dataset e preprocessing (normalizzazione e opzioni di riduzione feature).
 2.  Pre-clustering K-Means con un numero $k$ configurabile (`k_means_reduction`).
 3.  Clustering gerarchico agglomerativo custom sui centroidi K-Means.
-4.  Taglio del dendrogramma e/o selezione automatica del numero di cluster via silhouette.
+4.  Taglio del dendrogramma con numero di cluster finale impostato manualmente (`optimal_k`).
 5.  Salvataggio di:
       - metriche in CSV;
       - dendrogrammi;
@@ -81,7 +81,7 @@ flowchart TD
   B --> C[Pre-clustering K-Means]
   C --> D[Centroidi micro-cluster]
   D --> E[Clustering agglomerativo custom]
-  E --> F[Taglio dendrogramma / scelta k ottimale]
+  E --> F[Taglio dendrogramma con k finale fissato]
   F --> G[Etichette finali]
   G --> H[Metriche pairwise + matrice di contingenza]
   G --> I[Plot: dendrogramma, silhouette, PCA, heatmap]
@@ -102,40 +102,41 @@ Nel nostro approccio ibrido, il K-Means non ha lo scopo di trovare i cluster fin
 
 ### 4.2 Determinazione del numero di cluster finali ("a priori")
 
-Quando non si conoscono le famiglie o le classi in anticipo, il numero di cluster finali non è imposto, ma viene "scoperto" analizzando il comportamento dell'algoritmo:
+Nel flusso operativo corrente, il numero di cluster finali viene imposto manualmente (`optimal_k`) per mantenere il comportamento semplice, riproducibile e controllabile.
 
-  * **Analisi visiva del Dendrogramma:** È il pregio maggiore del clustering gerarchico. Osservando il dendrogramma, si cerca il "salto" verticale più lungo (la maggiore distanza sull'asse Y) che non viene intersecato da unioni orizzontali. Quel salto indica una forte e naturale distanza tra gruppi di dati. Tracciando una linea di taglio orizzontale in quel punto, l'albero restituisce il numero intrinseco di cluster. \* **Massimizzazione del Silhouette Score:** Si calcola il Coefficiente di Silhouette medio dell'intero modello al variare dei possibili tagli (es. tagliando l'albero per avere da 2 a 10 cluster). Si giustifica la scelta finale eleggendo il numero di cluster che massimizza lo score medio (più vicino a +1) e che presenta sagome omogenee e senza picchi negativi evidenti nel plot. \* **Metodo del Gomito (Elbow Method):** Tracciando la devianza o inerzia intra-cluster (WCSS) al variare dei cluster, si seleziona il punto in cui la curva subisce una brusca frenata nella sua discesa, formando un "gomito". Quel punto rappresenta il compromesso ideale tra un numero ridotto di cluster e un'alta coesione interna.
+  * **Scelta guidata dalla ground truth (analisi supervisionata ex-post):** per il dataset Frogs si imposta `optimal_k=4`.
+  * **Analisi manuale post-run:** eventuali alternative vengono valutate a mano con confronto di metriche, dendrogramma e contingenza, senza automatismi interni.
 
-  ## 5\. Matrice di Confusione: Contingenza vs Pairwise
+## 5\. Matrice di Confusione: Contingenza vs Pairwise
 
-  Nel progetto convivono due viste diverse:
+Nel progetto convivono due viste diverse:
 
-  1. **Matrice di contingenza (multiclasse)**
+1. **Matrice di contingenza (multiclasse)**
     - classi reali sulle righe e cluster predetti sulle colonne
     - utile per capire "quale classe finisce in quale cluster"
-    - con Iris e 3 classi avremo una matrice 3xK, con Frogs e 4 classi una 4xK
+    - nel caso Frogs (4 famiglie) si ottiene una matrice 4xK
 
-  2. **Valutazione pairwise (2x2 virtuale)**
+2. **Valutazione pairwise (2x2 virtuale)**
     - TP/FP/TN/FN vengono calcolati sulle coppie di campioni
     - questa e la base delle metriche pairwise (incluso il Rand Index)
     - formula usata: $RI = \frac{TP + TN}{TP + FP + FN + TN}$
 
-  Quindi i valori TP/FP/TN/FN nei CSV non sono in conflitto con il fatto di avere 3 o 4 classi: sono il risultato della valutazione sulle coppie, non una confusion matrix multiclasse classica.
+Quindi i valori TP/FP/TN/FN nei CSV non sono in conflitto con il fatto di avere piu classi: sono il risultato della valutazione sulle coppie, non una confusion matrix multiclasse classica.
 
-  ## 6\. Visualizzazione Qualitativa dei Cluster
+## 6\. Visualizzazione Qualitativa dei Cluster
 
-  Poiche i dataset sono ad alta dimensionalita, non e possibile plottare direttamente lo spazio originale. La pipeline include due visualizzazioni leggere:
+Poiche i dataset sono ad alta dimensionalita, non e possibile plottare direttamente lo spazio originale. La pipeline include due visualizzazioni leggere:
 
-  1. **Proiezione PCA 2D dei campioni colorati per cluster predetto**
-  2. **Heatmap di contingenza (classe vera vs cluster predetto)**
+1. **Proiezione PCA 2D dei campioni colorati per cluster predetto**
+2. **Heatmap di contingenza (classe vera vs cluster predetto)**
 
-  Questi plot si attivano da CLI con:
+Questi plot si attivano da CLI con:
 
   ```bash
   --plot-cluster-views
   ```
 
-  Se attivo, vengono salvati entrambi i plot per ogni run; se disattivo, non vengono generati.
+Se attivo, vengono salvati entrambi i plot per ogni run; se disattivo, non vengono generati.
 
 ## 7\. Struttura del progetto
 
@@ -168,61 +169,76 @@ uv run main.py --help
 Esempio run singola:
 
 ```bash
-uv run main.py --mode single --dataset Frogs_MFCCs --linkage average --distance euclidean --kmeans-reduction 25 --optimal-k -1
+uv run main.py --mode single --dataset Frogs_MFCCs --linkage ward --distance euclidean --kmeans-reduction 60 --optimal-k 4
 ```
 
 Esempio run singola con plot qualitativi:
 
 ```bash
-uv run main.py --mode single --dataset iris_dataset --linkage average --distance euclidean --kmeans-reduction auto --optimal-k 3 --plot-cluster-views
+uv run main.py --mode single --dataset Frogs_MFCCs --linkage ward --distance euclidean --kmeans-reduction 60 --optimal-k 4 --plot-cluster-views
 ```
 
 Esempio run multipla:
 
 ```bash
-uv run main.py --mode multi --dataset iris_dataset --k-min 5 --k-max 20 --max-clusters 8
+uv run main.py --mode multi --dataset Frogs_MFCCs --k-min auto --k-max auto --auto-window 8 --optimal-k 4 --no-plot-cluster-views
 ```
 
-## 9\. Risultati e discussione
+## 9\. Caso di Studio e Risultati: Dataset Frogs MFCCs
 
-I risultati vengono salvati nelle sottocartelle del dataset selezionato, separando metriche e grafici per configurazione.
+Per validare la robustezza della pipeline ibrida, il modello e stato testato sul dataset **Anuran Calls (Frogs MFCCs)**, composto da 7195 campioni audio raggruppabili in 4 famiglie principali.
 
-### 9.1 Esempio visuale (Iris, average-euclidean, k\_means\_reduction=9)
+Applicando la regola empirica $k \approx \sqrt{N/2}$, e stato scelto `k_means_reduction=60`, riducendo in modo significativo il costo computazionale del clustering gerarchico e mantenendo prototipi informativi.
 
-Configurazione di esempio:
+Durante l'analisi e emersa una forte dipendenza dei risultati dalla scelta del criterio di linkage.
 
-- dataset: `iris_dataset`
-- linkage: `average`
-- distanza: `euclidean`
-- `k_means_reduction=9` (risolto automaticamente)
-- cluster finali: `3`
+### 9.1 Sensibilita agli outlier: Complete Linkage
 
-#### Dendrogramma troncato
-
-<div align="center">
-  <img src="assets/iris_dataset/Plot/k_means_reduction=9/average_euclidean/dendrogram_3_clusters_lastp10.png" alt="Dendrogramma Iris average euclidean" width="70%">
-</div>
-
-#### Vista qualitativa dei cluster
+Con distanza euclidea e **Complete Linkage**, il modello tende a isolare micro-cluster compatti (comportamento utile per anomaly detection), ma nel task di partizionamento in 4 famiglie questo puo aumentare la frammentazione e ridurre il recall complessivo.
 
 <div align="center" style="margin-top: 10px; margin-bottom: 10px;">
-  <img src="assets/iris_dataset/Plot/k_means_reduction=9/average_euclidean/cluster_projection_pca.png" alt="PCA projection Iris" width="48%" style="display: inline-block; vertical-align: middle; margin: 5px;">
-  <img src="assets/iris_dataset/Plot/k_means_reduction=9/average_euclidean/contingency_heatmap.png" alt="Contingency heatmap Iris" width="48%" style="display: inline-block; vertical-align: middle; margin: 5px;">
+  <img src="assets/Frogs_MFCCs/Plot/k_means_reduction=60/complete_euclidean/cluster_projection_pca.png" alt="PCA Complete Linkage" width="48%" style="display: inline-block; vertical-align: middle; margin: 5px;">
+  <img src="assets/Frogs_MFCCs/Plot/k_means_reduction=60/complete_euclidean/silhouette_plot_k4.png" alt="Silhouette Complete Linkage" width="48%" style="display: inline-block; vertical-align: middle; margin: 5px;">
 </div>
 
-#### Confronto custom vs scikit-learn
+<div align="center" style="margin-top: 10px; margin-bottom: 20px;">
+  <img src="assets/Frogs_MFCCs/Plot/k_means_reduction=60/complete_euclidean/contingency_heatmap.png" alt="Heatmap Complete Linkage" width="50%">
+</div>
+
+### 9.2 Bilanciamento geometrico: Ward Linkage
+
+Con **Ward Linkage**, minimizzando l'incremento di varianza intra-cluster a ogni fusione, il partizionamento risulta piu bilanciato: silhouette piu regolare, macro-aree PCA piu proporzionate e migliore stabilita esplorativa sulle 4 famiglie.
+
+Questa e la configurazione finale raccomandata nel progetto.
 
 <div align="center" style="margin-top: 10px; margin-bottom: 10px;">
-  <img src="assets/iris_dataset/Results/k_means_reduction=9/average_euclidean/comparison_metrics_bar.png" alt="Confronto metriche custom vs sklearn" width="31%" style="display: inline-block; vertical-align: middle; margin: 5px;">
+  <img src="assets/Frogs_MFCCs/Plot/k_means_reduction=60/ward_euclidean/cluster_projection_pca.png" alt="PCA Ward Linkage" width="48%" style="display: inline-block; vertical-align: middle; margin: 5px;">
+  <img src="assets/Frogs_MFCCs/Plot/k_means_reduction=60/ward_euclidean/silhouette_plot_k4.png" alt="Silhouette Ward Linkage" width="48%" style="display: inline-block; vertical-align: middle; margin: 5px;">
+</div>
+
+<div align="center" style="margin-top: 10px; margin-bottom: 20px;">
+  <img src="assets/Frogs_MFCCs/Plot/k_means_reduction=60/ward_euclidean/dendrogram_4_clusters_lastp10.png" alt="Dendrogramma Ward Troncato" width="50%">
+</div>
+
+### 9.3 Note implementative: confronto Custom vs Scikit-learn
+
+Nelle run con linkage `single`, `complete` e `average`, le metriche pairwise della versione custom risultano sovrapponibili alla baseline scikit-learn nelle configurazioni testate.
+
+Con `ward`, possono comparire differenze molto piccole dovute a floating-point e tie-breaking: implementazioni diverse (Python puro vs C/Cython) possono scegliere fusioni iniziali lievemente differenti a parita numerica, producendo dendrogrammi non identici ma qualitativamente allineati.
+
+<div align="center" style="margin-top: 10px; margin-bottom: 10px;">
+  <img src="assets/Frogs_MFCCs/Results/k_means_reduction=60/ward_euclidean/comparison_metrics_bar.png" alt="Confronto metriche custom vs sklearn" width="31%" style="display: inline-block; vertical-align: middle; margin: 5px;">
+  <img src="assets/Frogs_MFCCs/Results/k_means_reduction=60/ward_euclidean/comparison_metrics_delta.png" alt="Delta metriche custom meno sklearn" width="31%" style="display: inline-block; vertical-align: middle; margin: 5px;">
+  <img src="assets/Frogs_MFCCs/Results/k_means_reduction=60/ward_euclidean/comparison_pairs_delta.png" alt="Delta TP FP TN FN" width="31%" style="display: inline-block; vertical-align: middle; margin: 5px;">
 </div>
 
 <div align="center">
-  <img src="assets/iris_dataset/Results/k_means_reduction=9/average_euclidean/comparison_confusion_matrices.png" alt="Pairwise confusion matrices custom vs sklearn" width="70%">
+  <img src="assets/Frogs_MFCCs/Results/k_means_reduction=60/ward_euclidean/comparison_confusion_matrices.png" alt="Pairwise confusion matrices custom vs sklearn" width="70%">
 </div>
 
 La lettura consigliata è:
 
   - confrontare prima metriche aggregate (precision/recall/F1/rand index);
   - poi verificare coerenza del taglio con silhouette e dendrogramma;
-  - infine confrontare la stabilità rispetto a `k_means_reduction`.
+  - infine usare `linkage=ward` come configurazione finale per il caso Frogs.
 
