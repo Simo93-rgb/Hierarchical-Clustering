@@ -1,14 +1,27 @@
 import argparse
 import os
+import numpy as np
 
 from src.funzioni import load_and_preprocess_data, run_clustering, setup_directories
+
+
+def resolve_kmeans_reduction(k_means_reduction: str, n_samples: int) -> int:
+    value = str(k_means_reduction).strip().lower()
+    if value == 'auto':
+        # Regola suggerita: sqrt(N/2)
+        return max(2, int(round(np.sqrt(n_samples / 2))))
+
+    parsed = int(value)
+    if parsed < 2:
+        raise ValueError("k_means_reduction deve essere >= 2")
+    return parsed
 
 
 def single_run(
         linkage_method: str,
         distance_metric: str,
         max_clusters: int = 8,
-        k_means_reduction: int = 10,
+    k_means_reduction: str = '15',
         optimal_k=-1,
         categorical=None,
         soglia: float = 1.01,
@@ -25,7 +38,9 @@ def single_run(
 
     # Caricamento e pre-processing dei dati
     X, y = load_and_preprocess_data(dataset_path, categorical=categorical, soglia=soglia)
+    resolved_k_reduction = resolve_kmeans_reduction(k_means_reduction, len(X))
     print(f'Dataset {dataset_name} caricato e pre-processato')
+    print(f'k_means_reduction risolto a: {resolved_k_reduction}')
     run_clustering(X,
                    y,
                    linkage_method,
@@ -33,7 +48,7 @@ def single_run(
                    output_dir,
                    plot_dir,
                    max_clusters=max_clusters,
-                   k_means_reduction=k_means_reduction,
+                   k_means_reduction=resolved_k_reduction,
                    optimal_k=optimal_k,
                    pre_clustering=pre_clustering,
                    compare_with_sklearn=compare_with_sklearn,
@@ -131,9 +146,9 @@ def parse_args():
     )
     parser.add_argument(
         "--kmeans-reduction",
-        type=int,
-        default=15,
-        help="Numero di centroidi usati nel pre-clustering K-Means.",
+        type=str,
+        default="15",
+        help="Numero di centroidi usati nel pre-clustering K-Means oppure 'auto' (sqrt(N/2)).",
     )
     parser.add_argument(
         "--optimal-k",

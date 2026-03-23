@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 
 from .plot import (
+    plot_confusion_matrices_custom_vs_sklearn,
     plot_comparison_deltas,
     plot_comparison_metrics_bar,
     plot_confusion_pair_deltas,
@@ -22,7 +23,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--all",
         action="store_true",
-        help="Genera tutti e tre i plot (bar, delta metriche, delta TP/FP/TN/FN).",
+        help="Genera tutti i plot (bar, delta metriche, delta TP/FP/TN/FN, matrici di confusione).",
     )
     parser.add_argument(
         "--bar",
@@ -39,6 +40,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Genera solo il plot dei delta TP/FP/TN/FN.",
     )
+    parser.add_argument(
+        "--confusion",
+        action="store_true",
+        help="Genera il plot delle matrici di confusione custom vs scikit-learn.",
+    )
     return parser.parse_args()
 
 
@@ -49,7 +55,7 @@ def main() -> None:
     if not csv_path.exists():
         raise FileNotFoundError(f"File non trovato: {csv_path}")
 
-    run_all = args.all or not (args.bar or args.delta or args.pairs)
+    run_all = args.all or not (args.bar or args.delta or args.pairs or args.confusion)
 
     generated = []
     if run_all or args.bar:
@@ -58,6 +64,8 @@ def main() -> None:
         generated.append(plot_comparison_deltas(str(csv_path)))
     if run_all or args.pairs:
         generated.append(plot_confusion_pair_deltas(str(csv_path)))
+    if run_all or args.confusion:
+        generated.append(plot_confusion_matrices_custom_vs_sklearn(str(csv_path)))
 
     print("\nFile generati:")
     for path in generated:

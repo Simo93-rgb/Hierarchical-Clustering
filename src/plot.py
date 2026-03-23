@@ -333,3 +333,52 @@ def plot_confusion_pair_deltas(comparison_csv_path: str, output_path: str | None
     plt.close()
     print(f"Plot salvato in {output_path}")
     return output_path
+
+
+def plot_confusion_matrices_custom_vs_sklearn(comparison_csv_path: str, output_path: str | None = None) -> str:
+    """
+    Plotta due matrici 2x2 affiancate (pair-count confusion matrix):
+    - Clustering Ibrido (custom)
+    - Scikit-learn (baseline)
+
+    La matrice e nel formato:
+    [[TP, FP],
+     [FN, TN]]
+    """
+    row = _load_comparison_row(comparison_csv_path)
+
+    custom_matrix = np.array([
+        [int(row['custom_tp']), int(row['custom_fp'])],
+        [int(row['custom_fn']), int(row['custom_tn'])],
+    ])
+    sklearn_matrix = np.array([
+        [int(row['sklearn_tp']), int(row['sklearn_fp'])],
+        [int(row['sklearn_fn']), int(row['sklearn_tn'])],
+    ])
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    matrices = [custom_matrix, sklearn_matrix]
+    titles = [
+        'Clustering Ibrido (Custom)',
+        f"Scikit-learn ({row.get('sklearn_model', 'baseline')})",
+    ]
+
+    for ax, matrix, title in zip(axes, matrices, titles):
+        im = ax.imshow(matrix, cmap='Blues')
+        ax.set_xticks([0, 1], labels=['Pred Pos', 'Pred Neg'])
+        ax.set_yticks([0, 1], labels=['True Pos', 'True Neg'])
+        ax.set_title(title)
+        for i in range(2):
+            for j in range(2):
+                ax.text(j, i, str(matrix[i, j]), ha='center', va='center', color='black')
+        fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+
+    plt.suptitle('Confronto matrici di confusione (pair-count)')
+    plt.tight_layout()
+
+    if output_path is None:
+        output_path = os.path.join(os.path.dirname(comparison_csv_path), 'comparison_confusion_matrices.png')
+    plt.savefig(output_path)
+    plt.close()
+    print(f"Plot salvato in {output_path}")
+    return output_path
