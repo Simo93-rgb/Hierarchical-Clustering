@@ -17,11 +17,30 @@ def resolve_kmeans_reduction(k_means_reduction: str, n_samples: int) -> int:
     return parsed
 
 
+def resolve_multi_k_range(k_min: str, k_max: str, n_samples: int, auto_window: int = 2) -> tuple[int, int]:
+    auto_center = resolve_kmeans_reduction('auto', n_samples)
+    window = max(1, int(auto_window))
+
+    k_min_val = str(k_min).strip().lower()
+    k_max_val = str(k_max).strip().lower()
+
+    resolved_min = max(2, auto_center - window) if k_min_val == 'auto' else int(k_min_val)
+    # k_max e esclusivo: +window+1 per includere simmetricamente il centro
+    resolved_max = (auto_center + window + 1) if k_max_val == 'auto' else int(k_max_val)
+
+    if resolved_min < 2:
+        raise ValueError("k_min deve essere >= 2")
+    if resolved_max <= resolved_min:
+        raise ValueError("k_max deve essere maggiore di k_min")
+
+    return resolved_min, resolved_max
+
+
 def single_run(
         linkage_method: str,
         distance_metric: str,
         max_clusters: int = 8,
-    k_means_reduction: str = '15',
+        k_means_reduction: str = '15',
         optimal_k=-1,
         categorical=None,
         soglia: float = 1.01,
@@ -59,8 +78,9 @@ def single_run(
 
 def multi_run(
         max_clusters: int = 8,
-        k_min: int = 5,
-        k_max: int = 45,
+    k_min: str = '5',
+    k_max: str = '45',
+    auto_window: int = 2,
         optimal_k=-1,
         categorical=None,
         soglia: float = 1.01,
@@ -83,13 +103,11 @@ def multi_run(
     linkage_methods = ['single', 'complete', 'average', 'centroid', 'ward']
     distance_metrics = ['euclidean']
 
-    if k_min < 2:
-        raise ValueError("k_min deve essere >= 2")
-    if k_max <= k_min:
-        raise ValueError("k_max deve essere maggiore di k_min")
+    resolved_k_min, resolved_k_max = resolve_multi_k_range(k_min, k_max, len(X), auto_window=auto_window)
+    print(f'Range k_means_reduction risolto a: [{resolved_k_min}, {resolved_k_max})')
 
     # Esecuzione del clustering per ogni combinazione di linkage e distanza
-    for k in range(k_min, k_max):
+    for k in range(resolved_k_min, resolved_k_max):
         for linkage_method in linkage_methods:
             for distance in distance_metrics:
                 run_clustering(X,
@@ -170,15 +188,21 @@ def parse_args():
     )
     parser.add_argument(
         "--k-min",
-        type=int,
-        default=5,
-        help="Valore iniziale (incluso) per la scansione k in modalita multi.",
+        type=str,
+        default="5",
+        help="Valore iniziale (incluso) per la scansione k in modalita multi oppure 'auto'.",
     )
     parser.add_argument(
         "--k-max",
+        type=str,
+        default="45",
+        help="Valore finale (escluso) per la scansione k in modalita multi oppure 'auto'.",
+    )
+    parser.add_argument(
+        "--auto-window",
         type=int,
-        default=45,
-        help="Valore finale (escluso) per la scansione k in modalita multi.",
+        default=2,
+        help="Semifinestra usata quando k-min/k-max sono 'auto' (range centrato su sqrt(N/2)).",
     )
     parser.add_argument(
         "--compare-sklearn",
@@ -217,6 +241,7 @@ def main():
             max_clusters=args.max_clusters,
             k_min=args.k_min,
             k_max=args.k_max,
+            auto_window=args.auto_window,
             optimal_k=args.optimal_k,
             soglia=args.soglia,
             dataset_name=args.dataset,
