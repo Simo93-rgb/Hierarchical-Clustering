@@ -48,8 +48,9 @@ class DataHandler:
         - feature_da_eliminare: set degli indici delle feature eliminate.
         """
         X = pd.DataFrame(self.data)
-        family = X['Family'].copy()  # Salva la colonna Family
-        X = X.drop(columns=['Family'])
+        target_column = X.columns[-1]
+        target_values = X[target_column].copy()
+        X = X.drop(columns=[target_column])
 
         # Calcola la matrice di correlazione
         corr_matrix = np.corrcoef(X, rowvar=False)
@@ -76,18 +77,18 @@ class DataHandler:
         # Elimina le feature dal dataset
         X_ridotto = np.delete(X, list(feature_da_eliminare), axis=1)
 
-        # Crea un nuovo dataframe con le colonne rimanenti e reinserisce Family
+        # Crea un nuovo dataframe con le colonne rimanenti e reinserisce il target.
         colonne_rimaste = X.columns.difference([X.columns[i] for i in feature_da_eliminare])
         self.data = pd.DataFrame(X_ridotto, columns=colonne_rimaste)
-        self.data['Family'] = family  # Aggiunge Family come ultima colonna
+        self.data[target_column] = target_values
         print(f'Sono state eliminate {len(feature_da_eliminare)} features:')
         [print(f'{feature}') for feature in feature_da_eliminare]
 
 
 if __name__ == '__main__':
-    # Determina il percorso della cartella "Assets/plot"
+    # Determina il percorso della cartella "assets/plot"
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    dataset_dir = os.path.join(project_root, 'Assets', 'Dataset')
+    dataset_dir = os.path.join(project_root, 'assets', 'Dataset')
 
     # Inizializza il gestore dati e carica il dataset
     data_handler = DataHandler(f'{dataset_dir}/Frogs_MFCCs_reduced.csv')

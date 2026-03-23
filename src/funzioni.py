@@ -15,7 +15,7 @@ from .hierarchical_clustering import HierarchicalClustering
 from .plot import save_silhouette_plot, plot_dendrogram
 
 
-def setup_directories(witch_dataset:str='Frogs_MFCCs') -> Tuple[str, str, str]:
+def setup_directories(dataset_name: str = 'Frogs_MFCCs') -> Tuple[str, str, str]:
     """
     Configura e crea le directory necessarie per il progetto.
 
@@ -23,12 +23,12 @@ def setup_directories(witch_dataset:str='Frogs_MFCCs') -> Tuple[str, str, str]:
         Tuple[str, str, str]: Percorsi per dataset, risultati e plot.
     """
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    dataset_dir = os.path.join(project_root, 'Assets', 'Dataset')
+    dataset_dir = os.path.join(project_root, 'assets', 'Dataset')
 
-    output_dir = os.path.join(project_root, 'Assets', witch_dataset)
+    output_dir = os.path.join(project_root, 'assets', dataset_name)
     output_dir = os.path.join(output_dir, 'Results')
 
-    plot_dir = os.path.join(project_root, 'Assets', witch_dataset)
+    plot_dir = os.path.join(project_root, 'assets', dataset_name)
     plot_dir = os.path.join(plot_dir, 'Plot')
 
     os.makedirs(output_dir, exist_ok=True)
@@ -182,21 +182,21 @@ def run_clustering(
 
     print(f'Inizio fit per {linkage_method} linkage e distanza {distance}')
     hc.fit()
-    hc.save_cluster_history_to_json(filename="history_for_dendogram.json")
+    hc.save_cluster_history_to_json(filename="history_for_dendrogram.json")
     print('Fine fit')
     # Creazione del dendrogramma
     linkage_matrix = create_linkage_matrix(hc)
-    # clusters: int = save_dendrogram(linkage_matrix, sub_plot_dir)
-    clusters: int = plot_dendrogram(linkage_matrix, sub_plot_dir, optimal_k)
-    print(f'Dendogramma con {clusters} cluster')
 
     # Trova il numero ottimale di cluster
     opt = optimal_k < 1
+    # Evita un taglio non valido del dendrogramma quando optimal_k e automatico.
+    dendrogram_k = optimal_k if not opt else max(2, min(max_clusters, len(linkage_matrix) + 1))
+    # clusters: int = save_dendrogram(linkage_matrix, sub_plot_dir)
+    cut_distance: float = plot_dendrogram(linkage_matrix, sub_plot_dir, dendrogram_k)
+    print(f'Dendrogramma tagliato a {dendrogram_k} cluster (soglia={cut_distance:.4f})')
+
     if opt:
-        if max_clusters < clusters:
-            max_clusters = clusters
-        # if max_clusters < k_means_reduction:
-        #     max_clusters = k_means_reduction
+        max_clusters = max(max_clusters, dendrogram_k)
         optimal_k = find_optimal_clusters(X, max_clusters, hc.predict, sub_plot_dir, linkage_method, distance)
 
     print(f"Numero ottimale di cluster: {optimal_k}")
@@ -215,7 +215,7 @@ def run_clustering(
     save_evaluation_results(evaluation_results, "evaluation_results.csv", sub_output_dir)
     if not opt:
         # Salvataggio del plot della silhouette
-        save_silhouette_plot(X, labels, clusters, sub_plot_dir)
+        save_silhouette_plot(X, labels, dendrogram_k, sub_plot_dir)
         save_silhouette_plot(X, labels, optimal_k, sub_plot_dir)
 
     print(f"Risultati per {linkage_method} linkage e distanza {distance} salvati.")

@@ -1,3 +1,4 @@
+import argparse
 import os
 
 from src.funzioni import load_and_preprocess_data, run_clustering, setup_directories
@@ -38,7 +39,9 @@ def single_run(
 
 
 def multi_run(
-        max_clusters: int = 8,
+    max_clusters: int = 8,
+    k_min: int = 5,
+    k_max: int = 45,
         optimal_k=-1,
         categorical=None,
         soglia: float = 1.01,
@@ -58,8 +61,13 @@ def multi_run(
     linkage_methods = ['single', 'complete', 'average', 'centroid', 'ward']
     distance_metrics = ['euclidean']
 
+    if k_min < 2:
+        raise ValueError("k_min deve essere >= 2")
+    if k_max <= k_min:
+        raise ValueError("k_max deve essere maggiore di k_min")
+
     # Esecuzione del clustering per ogni combinazione di linkage e distanza
-    for k in range(5, 45):
+    for k in range(k_min, k_max):
         for linkage_method in linkage_methods:
             for distance in distance_metrics:
                 run_clustering(X,
@@ -71,175 +79,113 @@ def multi_run(
                                max_clusters=max_clusters,
                                k_means_reduction=k,
                                optimal_k=optimal_k,
-                               pre_clustering=pre_clustering)
+                               pre_clustering=pre_clustering,
+                )
 
     print("Progetto completato e tutti i risultati salvati.")
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description=(
+            "Pipeline di clustering ibrido: pre-clustering K-Means + clustering gerarchico agglomerativo."
+        )
+    )
+
+    parser.add_argument(
+        "--mode",
+        choices=["single", "multi"],
+        default="single",
+        help="Esegue una singola configurazione o una ricerca su piu configurazioni.",
+    )
+    parser.add_argument(
+        "--dataset",
+        choices=["Frogs_MFCCs", "winequality-red", "winequality-white", "iris_dataset", "hepatitis"],
+        default="Frogs_MFCCs",
+        help="Dataset da utilizzare.",
+    )
+    parser.add_argument(
+        "--linkage",
+        choices=["single", "complete", "average", "centroid", "ward"],
+        default="ward",
+        help="Metodo di linkage per la modalita single.",
+    )
+    parser.add_argument(
+        "--distance",
+        default="euclidean",
+        help="Metrica di distanza da usare (es. euclidean).",
+    )
+    parser.add_argument(
+        "--max-clusters",
+        type=int,
+        default=8,
+        help="Numero massimo di cluster candidati quando optimal_k non e fissato.",
+    )
+    parser.add_argument(
+        "--kmeans-reduction",
+        type=int,
+        default=15,
+        help="Numero di centroidi usati nel pre-clustering K-Means.",
+    )
+    parser.add_argument(
+        "--optimal-k",
+        type=int,
+        default=-1,
+        help="Numero di cluster finale fisso. Usa -1 per selezione automatica.",
+    )
+    parser.add_argument(
+        "--pre-clustering",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Abilita/disabilita il pre-clustering con K-Means.",
+    )
+    parser.add_argument(
+        "--soglia",
+        type=float,
+        default=1.01,
+        help="Soglia per eliminazione feature correlate (<=1 attiva la riduzione).",
+    )
+    parser.add_argument(
+        "--k-min",
+        type=int,
+        default=5,
+        help="Valore iniziale (incluso) per la scansione k in modalita multi.",
+    )
+    parser.add_argument(
+        "--k-max",
+        type=int,
+        default=45,
+        help="Valore finale (escluso) per la scansione k in modalita multi.",
+    )
+
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+
+    if args.mode == "single":
+        single_run(
+            linkage_method=args.linkage,
+            distance_metric=args.distance,
+            max_clusters=args.max_clusters,
+            k_means_reduction=args.kmeans_reduction,
+            optimal_k=args.optimal_k,
+            soglia=args.soglia,
+            dataset_name=args.dataset,
+            pre_clustering=args.pre_clustering,
+        )
+    else:
+        multi_run(
+            max_clusters=args.max_clusters,
+            k_min=args.k_min,
+            k_max=args.k_max,
+            optimal_k=args.optimal_k,
+            soglia=args.soglia,
+            dataset_name=args.dataset,
+            pre_clustering=args.pre_clustering,
+        )
+
 
 if __name__ == "__main__":
-    # multi_run(k_means_reduction=35)
-    dataset_name = ['Frogs_MFCCs', 'winequality-red', 'winequality-white', 'iris_dataset']
-    single_run(
-        linkage_method='ward',
-        distance_metric='euclidean',
-        k_means_reduction=151,
-        optimal_k=3,
-        max_clusters=3,
-        soglia=1.01,
-        dataset_name=dataset_name[3],
-        pre_clustering=True
-    )
-    single_run(
-        linkage_method='centroid',
-        distance_metric='euclidean',
-        k_means_reduction=151,
-        optimal_k=3,
-        max_clusters=3,
-        soglia=1.01,
-        dataset_name=dataset_name[3],
-        pre_clustering=False
-    )
-    single_run(
-        linkage_method='single',
-        distance_metric='euclidean',
-        k_means_reduction=151,
-        optimal_k=3,
-        max_clusters=3,
-        soglia=1.01,
-        dataset_name=dataset_name[3],
-        pre_clustering=False
-    )
-    single_run(
-        linkage_method='complete',
-        distance_metric='euclidean',
-        k_means_reduction=151,
-        optimal_k=3,
-        max_clusters=3,
-        soglia=1.01,
-        dataset_name=dataset_name[3],
-        pre_clustering=False
-    )
-    single_run(
-        linkage_method='average',
-        distance_metric='euclidean',
-        k_means_reduction=151,
-        optimal_k=3,
-        max_clusters=3,
-        soglia=1.01,
-        dataset_name=dataset_name[3],
-        pre_clustering=False
-    )
-    multi_run(
-        optimal_k=3,
-        max_clusters=3,
-        soglia=1.01,
-        dataset_name=dataset_name[3],
-        pre_clustering=True
-    )
+    main()
 
-    multi_run(
-        optimal_k=4,
-        max_clusters=4,
-        soglia=1.01,
-        dataset_name=dataset_name[0],
-        pre_clustering=True
-    )
-
-#
-# # Imposta il flag per un comportamento più aggressivo del garbage collector
-# # gc.set_debug(gc.DEBUG_COLLECTABLE)
-# # Configurazione dei percorsi
-# current_dir = os.path.dirname(os.path.abspath(__file__))
-# dataset_dir = os.path.join(current_dir, 'Assets', 'Dataset')
-# output_dir = os.path.join(current_dir, 'Assets', 'Results')
-# plot_dir = os.path.join(current_dir, 'Assets', 'Plot')
-# os.makedirs(output_dir, exist_ok=True)
-# os.makedirs(plot_dir, exist_ok=True)
-# dataset_name = 'Frogs_MFCCs'
-#
-# # Inizializza il gestore dati e carica il dataset
-# data_handler = DataHandler(f'{dataset_dir}/{dataset_name}.csv')
-# data_handler.preprocess_data()
-# X: pd.DataFrame = data_handler.get_features()
-# y = data_handler.get_labels().iloc[:, -1].values  # Usa la colonna delle specie per la valutazione
-# print(f'Caricamento Dataset {dataset_name}')
-# n_clusters = 15
-#
-# # K-Means di scikitlearn
-# def kmeans_pre_clustering(X, n_clusters=n_clusters):
-#     from sklearn.cluster import KMeans
-#     kmeans = KMeans(n_clusters=n_clusters)
-#     labels = kmeans.fit_predict(X)
-#     return kmeans.cluster_centers_, labels
-#
-#
-# # Inizializza il modello di clustering gerarchico
-# hc = HierarchicalClustering(linkage='complete', X=X, pre_clustering_func=kmeans_pre_clustering, n_clusters=n_clusters)
-# print(f'Inizio fit')
-# hc.fit()
-# print('Fine fit')
-# # Usa cluster_history per il dendrogramma
-#
-# # Crea una lista di tuple con indici numerici per i cluster uniti
-# linkage_matrix = []
-# current_idx = 0  # Indice per i cluster
-#
-# # Crea un dizionario per mappare i nomi ai numeri di cluster
-# name_to_idx = {}
-#
-# for a, b, dist in hc.get_cluster_history():
-#     if a not in name_to_idx:
-#         name_to_idx[a.name] = float(a.name)
-#         current_idx += 1
-#     if b not in name_to_idx:
-#         name_to_idx[b.name] = float(b.name)
-#         current_idx += 1
-#
-#     # Aggiungi la fusione al linkage_matrix
-#     linkage_matrix.append([name_to_idx[a.name], name_to_idx[b.name], dist, len(a.dataset_indices) + len(
-#         b.dataset_indices)])  # "2" è il numero di elementi nei cluster uniti
-#
-# # Converti la lista in un array numpy
-# linkage_matrix = np.array(linkage_matrix)
-# # Previsione e valutazione
-# # Trova il numero ottimale di cluster
-# max_clusters = 8  # Puoi modificare questo valore
-# optimal_k = find_optimal_clusters(X, max_clusters, hc.predict)
-#
-# print(f"Numero ottimale di cluster: {optimal_k}")
-# labels = hc.predict(optimal_k)
-#
-# # Calcola la matrice di confusione
-# conf_matrix = calculate_confusion_matrix(y, labels)
-#
-# # Calcola e salva varie metriche di valutazione
-# evaluation_results = {
-#     "purity": calculate_purity(conf_matrix),
-#     "f1_score": calculate_f1_score(conf_matrix),
-#     "false_positive_rate": calculate_false_positive_rate(conf_matrix),
-#     "silhouette_score": calculate_silhouette(X, labels)[0]
-# }
-#
-# save_evaluation_results(evaluation_results, "evaluation_results.csv", output_dir)
-#
-# # Salva i plot
-# save_dendrogram(linkage_matrix, plot_dir)
-# save_silhouette_plot(X, labels, optimal_k, plot_dir)
-#
-# print("Progetto completato e risultati salvati.")
-#
-# # # Calcola e salva il punteggio di silhouette
-# # silhouette_path = os.path.join(output_dir, "silhouette_score.csv")
-# # calculate_and_save_silhouette(X, labels, file_name=silhouette_path)
-# #
-# # # Calcola e salva la purezza dei cluster
-# # purity_path = os.path.join(output_dir, "purity_score.csv")
-# # purity = purity_score(y, labels, file_name=purity_path)
-# #
-# # # Plot e salva il grafico della silhouette
-# # silhouette_plot_path = os.path.join(output_dir, "silhouette_plot.png")
-# # save_silhouette_plot(X, labels, file_name=silhouette_plot_path)
-# #
-# # print("Progetto completato e risultati salvati.")
-# # #Disabilita il flag per ripristinare il comportamento predefinito del garbage collector
-# # #gc.set_debug(0)

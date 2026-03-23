@@ -2,7 +2,7 @@ import pandas as pd
 import os
 
 # Directory base
-base_dir = 'Assets/Results'
+base_dir = 'assets/Results'
 
 # Lista per salvare tutti i risultati
 results = []

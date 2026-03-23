@@ -2,9 +2,8 @@ import numpy as np
 from scipy.cluster.hierarchy import dendrogram
 import os
 import matplotlib.pyplot as plt
-from typing import List, Callable
-import os
-# Determina il percorso della cartella "Assets/plot"
+from typing import Callable
+# Determina il percorso della cartella "assets/plot"
 
 
 # def save_dendrogram(linkage_matrix, file_name="dendrogram.png"):
@@ -114,11 +113,6 @@ import os
 #     plt.ylabel("Cluster")
 #     plt.title(f"Silhouette Plot (k={k})")
 #     save_plot(plt, f"silhouette_plot_k={k}.png", plot_dir)
-
-
-import networkx as nx
-
-
 def save_plot(plot, file_name: str, plot_dir: str):
     """
     Salva il plot corrente nella directory specificata.
@@ -147,10 +141,11 @@ def plot_dendrogram(linkage_matrix: np.ndarray, plot_dir: str, n_clusters: int):
     from scipy.cluster.hierarchy import dendrogram
     plt.figure(figsize=(10, 7))
 
+    n_clusters = max(2, min(int(n_clusters), len(linkage_matrix) + 1))
     # Calcola la soglia di taglio per ottenere il numero desiderato di cluster
     threshold = linkage_matrix[-(n_clusters - 1), 2]
 
-    dendrogram_dict = dendrogram(linkage_matrix, color_threshold=threshold)
+    dendrogram(linkage_matrix, color_threshold=threshold)
 
     plt.title(f"Dendrogram with {n_clusters} clusters")
     plt.xlabel("Sample Index")
@@ -161,7 +156,7 @@ def plot_dendrogram(linkage_matrix: np.ndarray, plot_dir: str, n_clusters: int):
 
     save_plot(plt, f"dendrogram_{n_clusters}_clusters.png", plot_dir)
 
-    return threshold 
+    return threshold
 
 def save_silhouette_plot(X: np.ndarray, labels: np.ndarray, k: int, plot_dir: str):
     """

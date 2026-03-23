@@ -1,3 +1,5 @@
+implementazioni.md
+assets/
 # Ignora cartelle specifiche di Python
 upo-machine-learning/Machine Learning/Logistic Regression With Gradient Descend/__pycache__/
 *.pyc
@@ -20,6 +22,6 @@ upo-machine-learning/Machine Learning/Logistic Regression With Gradient Descend/
 
 # Ignora i plot e le run
 **/runs/
-Assets/Results/*
-Assets/Plot/*
-Assets/Dataset/*
+assets/Results/*
+assets/Plot/*
+assets/Dataset/*

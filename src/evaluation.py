@@ -7,10 +7,10 @@
 # import os
 # import csv
 #
-# # Determina il percorso della cartella "Assets/results"
+# # Determina il percorso della cartella "assets/results"
 # current_dir = os.path.dirname(os.path.abspath(__file__))
-# results_dir = os.path.join(current_dir, 'Assets', 'Results')
-# plot_dir = os.path.join(current_dir, 'Assets', 'Plot')
+# results_dir = os.path.join(current_dir, 'assets', 'Results')
+# plot_dir = os.path.join(current_dir, 'assets', 'Plot')
 # os.makedirs(results_dir, exist_ok=True)  # Crea la cartella se non esiste
 # os.makedirs(plot_dir, exist_ok=True)  # Crea la cartella se non esiste
 #
@@ -177,8 +177,7 @@ from typing import Tuple, Dict
 
 import numpy as np
 from scipy.cluster.hierarchy import linkage
-from sklearn.metrics import confusion_matrix, silhouette_score, adjusted_rand_score, \
-    pairwise_distances, silhouette_samples
+from sklearn.metrics import silhouette_score, silhouette_samples
 
 
 # def calculate_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray) -> np.ndarray:
