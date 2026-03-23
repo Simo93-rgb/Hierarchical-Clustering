@@ -491,6 +491,8 @@ def print_contingency_matrix(y_true: np.ndarray, y_pred: np.ndarray) -> None:
     # Ottieni valori unici ordinati
     unique_true = np.unique(y_true)
     unique_pred = np.unique(y_pred)
+    canonical_pred = [f"C{i + 1}" for i in range(len(unique_pred))]
+    pred_mapping = {canonical_pred[i]: unique_pred[i] for i in range(len(unique_pred))}
 
     # Crea la matrice di contingenza
     matrix = np.zeros((len(unique_true), len(unique_pred)), dtype=int)
@@ -504,8 +506,8 @@ def print_contingency_matrix(y_true: np.ndarray, y_pred: np.ndarray) -> None:
     # Stampa intestazioni colonne
     print("\nMatrice di Contingenza:")
     print(" " * 10, end="")
-    for pred in unique_pred:
-        print(f"C{pred:4}", end=" ")
+    for pred in canonical_pred:
+        print(f"{pred:>6}", end=" ")
     print("\n" + "-" * (10 + 5 * len(unique_pred)))
 
     # Stampa righe con etichette
@@ -514,5 +516,7 @@ def print_contingency_matrix(y_true: np.ndarray, y_pred: np.ndarray) -> None:
         for j in range(len(unique_pred)):
             print(f"{matrix[i, j]:4}", end=" ")
         print()
+
+    print("Mappatura cluster predetti:", ", ".join([f"{k}=raw {v}" for k, v in pred_mapping.items()]))
 
     return matrix

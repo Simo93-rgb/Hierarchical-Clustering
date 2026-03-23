@@ -1,7 +1,6 @@
 docs/
 assets/
 # Ignora cartelle specifiche di Python
-upo-machine-learning/Machine Learning/Logistic Regression With Gradient Descend/__pycache__/
 *.pyc
 
 # Ignora file di configurazione locali

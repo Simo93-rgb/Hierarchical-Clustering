@@ -13,7 +13,12 @@ from .evaluation import (
     save_evaluation_results,
 )
 from .hierarchical_clustering import HierarchicalClustering
-from .plot import save_silhouette_plot, plot_dendrogram
+from .plot import (
+    save_silhouette_plot,
+    plot_dendrogram,
+    plot_cluster_projection_pca,
+    plot_contingency_heatmap,
+)
 
 
 def _fit_agglomerative_labels(
@@ -215,7 +220,8 @@ def run_clustering(
         optimal_k: int = -1,
         pre_clustering: bool = True,
         compare_with_sklearn: bool = True,
-        dendrogram_display_branches: int = 10) -> None:
+        dendrogram_display_branches: int = 10,
+        plot_cluster_views: bool = False) -> None:
     """
     Esegue il clustering gerarchico e salva i risultati.
 
@@ -290,6 +296,20 @@ def run_clustering(
     evaluation_results['clusters'] = optimal_k
     evaluation_results['k_means_reduction'] = k_means_reduction
     save_evaluation_results(evaluation_results, "evaluation_results.csv", sub_output_dir)
+
+    if plot_cluster_views:
+        plot_cluster_projection_pca(
+            X=X,
+            labels=labels,
+            plot_dir=sub_plot_dir,
+            title=f'PCA cluster projection - {linkage_method} ({distance})',
+        )
+        plot_contingency_heatmap(
+            y_true=y,
+            y_pred=labels,
+            plot_dir=sub_plot_dir,
+            title=f'Contingency heatmap - {linkage_method} ({distance})',
+        )
 
     if compare_with_sklearn:
         sklearn_start = time.time()
