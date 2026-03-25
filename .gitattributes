@@ -1,0 +1,10 @@
+assets/Frogs_MFCCs/Plot/k_means_reduction=60/ward_euclidean/cluster_projection_pca.png filter=lfs diff=lfs merge=lfs -text
+assets/Frogs_MFCCs/Plot/k_means_reduction=60/ward_euclidean/dendrogram_4_clusters_lastp10.png filter=lfs diff=lfs merge=lfs -text
+assets/Frogs_MFCCs/Results/k_means_reduction=60/ward_euclidean/comparison_metrics_bar.png filter=lfs diff=lfs merge=lfs -text
+assets/Frogs_MFCCs/Results/k_means_reduction=60/ward_euclidean/comparison_pairs_delta.png filter=lfs diff=lfs merge=lfs -text
+assets/Frogs_MFCCs/Results/k_means_reduction=60/ward_euclidean/comparison_confusion_matrices.png filter=lfs diff=lfs merge=lfs -text
+assets/Frogs_MFCCs/Plot/k_means_reduction=60/complete_euclidean/cluster_projection_pca.png filter=lfs diff=lfs merge=lfs -text
+assets/Frogs_MFCCs/Plot/k_means_reduction=60/complete_euclidean/silhouette_plot_k4.png filter=lfs diff=lfs merge=lfs -text
+assets/Frogs_MFCCs/Plot/k_means_reduction=60/complete_euclidean/contingency_heatmap.png filter=lfs diff=lfs merge=lfs -text
+assets/Frogs_MFCCs/Plot/k_means_reduction=60/ward_euclidean/silhouette_plot_k4.png filter=lfs diff=lfs merge=lfs -text
+assets/Frogs_MFCCs/Results/k_means_reduction=60/ward_euclidean/comparison_metrics_delta.png filter=lfs diff=lfs merge=lfs -text
